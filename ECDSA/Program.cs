@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Globalization;
+using System.Net.Configuration;
 using System.Numerics;
 using System.Text;
 
@@ -98,9 +101,43 @@ namespace ECDSA
             var pk = Secp256k1.RecoverPrivateKey(sigs.Item1.Msg, sigs.Item1.Sig, sigs.Item2.Msg, sigs.Item2.Sig);
             Console.WriteLine($"Recovered private key: {pk.ToString("X")}");
         }
-        
+
+        static void TestSecp256k1(string digestString, string privateKeyString, string nonceString, string rString, string sString)
+        {
+            var digest = BigInteger.Parse("0" + digestString, NumberStyles.HexNumber);
+            var privateKey = BigInteger.Parse("0" + privateKeyString, NumberStyles.HexNumber);
+            var nonce = BigInteger.Parse("0" + nonceString, NumberStyles.HexNumber);
+            var r = BigInteger.Parse("0" + rString, NumberStyles.HexNumber);
+            var s = BigInteger.Parse("0" + sString, NumberStyles.HexNumber);
+            var publicKey = Secp256k1.Param_G * privateKey;
+
+            var sw = new Stopwatch();
+
+            sw.Start();
+            var signature = Secp256k1.SignDigest(digest, privateKey, nonce);
+            if (signature == null || signature.R != r || signature.S != s)
+                throw new Exception("Secp256k1 fails signing test");
+            sw.Stop();
+            var t0 = sw.ElapsedMilliseconds;
+
+            sw.Restart();
+            if (!Secp256k1.VerifySignature(digest, signature, publicKey))
+                throw new Exception("Secp256k1 fails signature verification test");
+            sw.Stop();
+            var t1 = sw.ElapsedMilliseconds;
+
+            Console.WriteLine($"Signing time:      {t0} ms");
+            Console.WriteLine($"Verification time: {t1} ms");
+        }
+
+        static void TestSecp256k1()
+        {
+            TestSecp256k1("4b688df40bcedbe641ddb16ff0a1842d9c67ea1c3bf63f3e0471baa664531d1a", "ebb2c082fd7727890a28ac82f6bdf97bad8de9f5d7c9028692de1a255cad3e0f", "49a0d7b786ec9cde0d0721d72804befd06571c974b191efb42ecf322ba9ddd9a", "241097efbf8b63bf145c8961dbdf10c310efbb3b2676bbc0f8b08505c9e2f795", "021006b7838609339e8b415a7f9acb1b661828131aef1ecbc7955dfb01f3ca0e");
+        }
+
         static void Main()
         {
+            TestSecp256k1();
             TestSignature();
             TestSignatureCorruption();
             TestMessageCorruption();

@@ -93,7 +93,11 @@ namespace ECDSA
 
         public static Sig SignMessage(byte[] message, BigInteger privateKey, BigInteger? userNonce = null)
         {
-            var z = HashMessage(message);
+            return SignDigest(HashMessage(message), privateKey, userNonce);
+        }
+
+        public static Sig SignDigest(BigInteger digest, BigInteger privateKey, BigInteger? userNonce = null)
+        {
             BigInteger k, r, s;
             var N = Param_n;
             for (bool looped = false; ; looped = true)
@@ -105,7 +109,7 @@ namespace ECDSA
                 r = (Param_G * k).X % N;
                 if (r == 0)
                     continue;
-                s = ((privateKey * r + z) * k.ExtendedEuclidean(N)).Mod(N);
+                s = ((privateKey * r + digest) * k.ExtendedEuclidean(N)).Mod(N);
                 if (s == 0)
                     continue;
                 break;
@@ -115,6 +119,11 @@ namespace ECDSA
 
         public static bool VerifySignature(byte[] message, Sig signature, EcPoint publicKey)
         {
+            return VerifySignature(HashMessage(message), signature, publicKey);
+        }
+
+        public static bool VerifySignature(BigInteger digest, Sig signature, EcPoint publicKey)
+        {
             var N = Param_n;
             var r = signature.R;
             var s = signature.S;
@@ -122,9 +131,8 @@ namespace ECDSA
                 return false;
             if (r < 1 || s < 1 || r >= N || s >= N)
                 return false;
-            var z = HashMessage(message);
             var w = s.ExtendedEuclidean(N);
-            var u1 = (z * w).Mod(N);
+            var u1 = (digest * w).Mod(N);
             var u2 = (r * w).Mod(N);
             var x = Param_G * u1 + publicKey * u2;
             if (x.IsInfinite)

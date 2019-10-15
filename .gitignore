@@ -1,0 +1,7 @@
+.vs/
+*.exe
+*.exe.config
+*.pdb
+*.vshost.*
+*.cache
+ECDSA/obj/
